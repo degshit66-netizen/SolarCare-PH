@@ -1,0 +1,127 @@
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+export const users = sqliteTable('users', {
+    id: text('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    name: text('name').notNull(),
+    role: text('role', { enum: ['admin', 'manager', 'technician', 'viewer'] }).notNull().default('viewer'),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const customers = sqliteTable('customers', {
+    id: text('id').primaryKey(), // human readable ID like CUST-1001
+    uuid: text('uuid').notNull().unique(),
+    type: text('type', { enum: ['residential', 'commercial', 'industrial', 'other'] }).notNull(),
+    name: text('name').notNull(),
+    contactPerson: text('contact_person'),
+    phone: text('phone').notNull(),
+    email: text('email'),
+    address: text('address').notNull(),
+    city: text('city').notNull(),
+    province: text('province').notNull(),
+    postalCode: text('postal_code'),
+    notes: text('notes'),
+    status: text('status', { enum: ['active', 'archived'] }).notNull().default('active'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+    updatedAt: text('updated_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const installations = sqliteTable('installations', {
+    id: text('id').primaryKey(), // human readable ID like INST-1001
+    uuid: text('uuid').notNull().unique(),
+    customerId: text('customer_id').notNull().references(() => customers.id),
+    projectName: text('project_name').notNull(),
+    siteAddress: text('site_address').notNull(),
+    capacityKwp: real('capacity_kwp').notNull(),
+    systemType: text('system_type', { enum: ['grid-tied', 'off-grid', 'hybrid', 'other'] }).notNull(),
+    startDate: text('start_date'),
+    completionDate: text('completion_date'),
+    commissioningDate: text('commissioning_date'),
+    turnoverDate: text('turnover_date'),
+    assignedTechnicianId: text('assigned_technician_id').references(() => users.id),
+    status: text('status', { enum: ['Draft', 'Scheduled', 'In Progress', 'Completed', 'Commissioned', 'Handed Over', 'On Hold', 'Cancelled'] }).notNull().default('Draft'),
+    notes: text('notes'),
+    referenceNumber: text('reference_number'),
+    statusUpdatedAt: text('status_updated_at'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const equipment = sqliteTable('equipment', {
+    id: text('id').primaryKey(), // EQ-1001
+    uuid: text('uuid').notNull().unique(),
+    installationId: text('installation_id').notNull().references(() => installations.id),
+    category: text('category', { enum: ['Solar panels', 'Inverters', 'Batteries', 'Charge controllers', 'Mounting structures', 'Cables and electrical components', 'Monitoring devices', 'Other accessories'] }).notNull(),
+    brand: text('brand').notNull(),
+    model: text('model').notNull(),
+    serialNumber: text('serial_number'),
+    quantity: integer('quantity').notNull().default(1),
+    unit: text('unit').default('pcs'),
+    specifications: text('specifications'),
+    supplier: text('supplier'),
+    purchaseDate: text('purchase_date'),
+    installationDate: text('installation_date'),
+    status: text('status', { enum: ['Planned', 'Installed', 'Operational', 'Under Inspection', 'Faulty', 'Replaced', 'Removed'] }).notNull().default('Installed'),
+    notes: text('notes'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const warranties = sqliteTable('warranties', {
+    id: text('id').primaryKey(), // WAR-1001
+    uuid: text('uuid').notNull().unique(),
+    installationId: text('installation_id').notNull().references(() => installations.id),
+    equipmentId: text('equipment_id').references(() => equipment.id),
+    provider: text('provider').notNull(),
+    type: text('type', { enum: ['Manufacturer Product Warranty', 'Manufacturer Performance Warranty', 'Workmanship or Installation Warranty', 'Battery Warranty', 'Inverter Warranty', 'Other'] }).notNull(),
+    referenceNumber: text('reference_number'),
+    description: text('description'),
+    startDate: text('start_date').notNull(),
+    endDate: text('end_date').notNull(),
+    terms: text('terms'),
+    status: text('status', { enum: ['Not Yet Active', 'Active', 'Expiring Soon', 'Expired', 'Claim Pending', 'Claim Approved', 'Claim Rejected', 'Closed'] }).notNull().default('Active'),
+    notes: text('notes'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const warrantyClaims = sqliteTable('warranty_claims', {
+    id: text('id').primaryKey(), // CLM-1001
+    uuid: text('uuid').notNull().unique(),
+    warrantyId: text('warranty_id').notNull().references(() => warranties.id),
+    equipmentId: text('equipment_id').references(() => equipment.id),
+    dateReported: text('date_reported').notNull(),
+    problemDescription: text('problem_description').notNull(),
+    providerReference: text('provider_reference'),
+    status: text('status', { enum: ['Draft', 'Submitted', 'Under Review', 'Additional Information Required', 'Approved', 'Rejected', 'Repair Scheduled', 'Repaired', 'Replaced', 'Closed'] }).notNull().default('Draft'),
+    assignedStaffId: text('assigned_staff_id').references(() => users.id),
+    resolutionNotes: text('resolution_notes'),
+    resolutionDate: text('resolution_date'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const serviceRequests = sqliteTable('service_requests', {
+    id: text('id').primaryKey(), // SRV-1001
+    uuid: text('uuid').notNull().unique(),
+    installationId: text('installation_id').notNull().references(() => installations.id),
+    dateReported: text('date_reported').notNull(),
+    problemCategory: text('problem_category').notNull(),
+    description: text('description').notNull(),
+    priority: text('priority', { enum: ['Low', 'Medium', 'High', 'Critical'] }).notNull().default('Medium'),
+    assignedTechnicianId: text('assigned_technician_id').references(() => users.id),
+    scheduledVisitDate: text('scheduled_visit_date'),
+    status: text('status', { enum: ['Open', 'Assigned', 'Scheduled', 'In Progress', 'Waiting for Parts', 'Waiting for Customer', 'Resolved', 'Closed', 'Cancelled'] }).notNull().default('Open'),
+    workPerformed: text('work_performed'),
+    partsReplaced: text('parts_replaced'),
+    completionNotes: text('completion_notes'),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
+export const documents = sqliteTable('documents', {
+    id: text('id').primaryKey(),
+    uuid: text('uuid').notNull().unique(),
+    type: text('type', { enum: ['Installation Photo', 'Site Survey', 'Quote/Invoice', 'Equipment Manual', 'Warranty Certificate', 'Commissioning Report', 'Handover Form', 'Maintenance Document', 'Claim Evidence', 'Other'] }).notNull(),
+    filename: text('filename').notNull(),
+    originalName: text('original_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    installationId: text('installation_id').references(() => installations.id),
+    equipmentId: text('equipment_id').references(() => equipment.id),
+    warrantyId: text('warranty_id').references(() => warranties.id),
+    claimId: text('claim_id').references(() => warrantyClaims.id),
+    serviceRequestId: text('service_request_id').references(() => serviceRequests.id),
+    uploadedById: text('uploaded_by_id').references(() => users.id),
+    createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`),
+});
